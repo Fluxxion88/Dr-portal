@@ -1,0 +1,12 @@
+{
+  "name": "dr-portal",
+  "version": "1.0.0",
+  "description": "Dynamic Resonance Portal — Agent Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

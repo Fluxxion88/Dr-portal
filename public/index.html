@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Resonance</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0B1120;
+      --bg-secondary: #111B2E;
+      --bg-tertiary: #162033;
+      --border: #1A2740;
+      --border-light: #243044;
+      --text-primary: #E2E8F0;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --accent-green: #10B981;
+      --accent-blue: #3B82F6;
+      --accent-cyan: #06B6D4;
+      --accent-red: #EF4444;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    /* ═══ LOGIN GATE ═══ */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    .login-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .login-card {
+      width: 380px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+
+    .login-logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .login-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 36px;
+    }
+
+    .login-input-wrap {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 14px 18px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .login-input:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .login-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .login-btn:hover {
+      background: #2563EB;
+    }
+
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
+    .login-error {
+      color: var(--accent-red);
+      font-size: 12px;
+      margin-top: 12px;
+      min-height: 18px;
+    }
+
+    /* ═══ PORTAL LAYOUT ═══ */
+    .portal {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    .portal.active {
+      display: flex;
+    }
+
+    /* ── Header ── */
+    .portal-header {
+      height: 52px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      flex-shrink: 0;
+      gap: 16px;
+    }
+
+    .portal-logo {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .portal-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border-light);
+    }
+
+    /* Agent dropdown */
+    .agent-dropdown {
+      position: relative;
+    }
+
+    .agent-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      min-width: 220px;
+    }
+
+    .agent-btn:hover {
+      border-color: var(--border-light);
+      background: var(--bg-tertiary);
+    }
+
+    .agent-btn .arrow {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+
+    .agent-btn.open .arrow {
+      transform: rotate(180deg);
+    }
+
+    .agent-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .agent-dot.green { background: var(--accent-green); }
+    .agent-dot.blue { background: var(--accent-blue); }
+    .agent-dot.cyan { background: var(--accent-cyan); }
+
+    .agent-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 280px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: all 0.15s ease;
+    }
+
+    .agent-menu.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .agent-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .agent-option:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .agent-option.active {
+      background: var(--accent-blue)/10;
+      border: 1px solid var(--accent-blue)/20;
+    }
+
+    .agent-option-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .agent-option-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Status indicator */
+    .portal-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+    }
+
+    .portal-version {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .logout-btn {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    /* ── Content (iframe) ── */
+    .portal-content {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .portal-content iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ═══ LOADING SPINNER ═══ */
+    .iframe-loading {
+      position: absolute;
+      inset: 0;
+      top: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      z-index: 50;
+      transition: opacity 0.3s;
+    }
+
+    .iframe-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 640px) {
+      .agent-btn { min-width: 160px; font-size: 12px; }
+      .portal-logo { font-size: 14px; }
+      .status-dot { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ LOGIN OVERLAY ═══ -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">Dynamic Resonance</div>
+      <div class="login-sub">Agent Platform</div>
+      <form id="login-form">
+        <div class="login-input-wrap">
+          <input 
+            type="password" 
+            class="login-input" 
+            id="password-input" 
+            placeholder="Enter access code" 
+            autocomplete="off"
+            autofocus
+          >
+        </div>
+        <button type="submit" class="login-btn">Sign In</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══ PORTAL (hidden until login) ═══ -->
+  <div class="portal" id="portal">
+    <!-- Header -->
+    <header class="portal-header">
+      <div class="portal-logo">Dynamic Resonance</div>
+      <div class="portal-sep"></div>
+
+      <!-- Agent Dropdown -->
+      <div class="agent-dropdown" id="agent-dropdown">
+        <button class="agent-btn" id="agent-btn" onclick="toggleDropdown()">
+          <span class="agent-dot green" id="agent-dot"></span>
+          <span id="agent-btn-label">HS Classifier</span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="agent-menu" id="agent-menu">
+          <!-- Agents rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Right side -->
+      <div class="portal-status">
+        <span class="status-dot">Online</span>
+        <span class="portal-version">v1.0</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <!-- Loading spinner -->
+    <div class="iframe-loading" id="iframe-loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Agent iframe -->
+    <div class="portal-content">
+      <iframe id="agent-iframe" src="" allow="clipboard-read; clipboard-write"></iframe>
+    </div>
+  </div>
+
+  <script>
+    // ═══ CONFIG ═══
+    const PASSCODE = 'Sdekteam202';
+    const SESSION_KEY = 'dr-portal-auth';
+    const AGENT_KEY = 'dr-portal-agent';
+
+    const AGENTS = [
+      {
+        id: 'classifier',
+        name: 'HS Classifier',
+        desc: 'TNVED code classification for customs',
+        url: 'https://rezonyr-hs-classifier.up.railway.app',
+        dot: 'green',
+      },
+      {
+        id: 'letter-gen',
+        name: 'SDEK Letter Generator',
+        desc: 'Information letter generation from DTT + registry',
+        url: 'https://sdek-mail.up.railway.app',
+        dot: 'blue',
+      },
+    ];
+
+    // ═══ STATE ═══
+    let currentAgent = null;
+    let dropdownOpen = false;
+
+    // ═══ AUTH ═══
+    function checkAuth() {
+      const token = sessionStorage.getItem(SESSION_KEY);
+      if (token === btoa(PASSCODE)) {
+        showPortal();
+      }
+    }
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const input = document.getElementById('password-input');
+      const error = document.getElementById('login-error');
+      
+      if (input.value === PASSCODE) {
+        sessionStorage.setItem(SESSION_KEY, btoa(PASSCODE));
+        error.textContent = '';
+        showPortal();
+      } else {
+        error.textContent = 'Invalid access code';
+        input.value = '';
+        input.focus();
+        // Shake animation
+        const card = document.querySelector('.login-card');
+        card.style.animation = 'none';
+        card.offsetHeight; // trigger reflow
+        card.style.animation = 'shake 0.4s ease';
+      }
+    });
+
+    function logout() {
+      sessionStorage.removeItem(SESSION_KEY);
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('portal').classList.remove('active');
+      document.getElementById('password-input').value = '';
+      document.getElementById('password-input').focus();
+    }
+
+    function showPortal() {
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('portal').classList.add('active');
+      
+      renderAgentMenu();
+      
+      // Restore last agent or default to first
+      const savedAgent = localStorage.getItem(AGENT_KEY) || AGENTS[0].id;
+      selectAgent(savedAgent);
+    }
+
+    // ═══ AGENT SWITCHING ═══
+    function renderAgentMenu() {
+      const menu = document.getElementById('agent-menu');
+      menu.innerHTML = AGENTS.map(agent => `
+        <div class="agent-option ${currentAgent === agent.id ? 'active' : ''}" 
+             onclick="selectAgent('${agent.id}')">
+          <span class="agent-dot ${agent.dot}"></span>
+          <div>
+            <div class="agent-option-name">${agent.name}</div>
+            <div class="agent-option-desc">${agent.desc}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectAgent(agentId) {
+      const agent = AGENTS.find(a => a.id === agentId);
+      if (!agent) return;
+
+      currentAgent = agent.id;
+      localStorage.setItem(AGENT_KEY, agent.id);
+
+      // Update button
+      document.getElementById('agent-btn-label').textContent = agent.name;
+      document.getElementById('agent-dot').className = `agent-dot ${agent.dot}`;
+
+      // Show loading
+      const loading = document.getElementById('iframe-loading');
+      loading.classList.remove('hidden');
+
+      // Load agent in iframe with embedded flag
+      const iframe = document.getElementById('agent-iframe');
+      const separator = agent.url.includes('?') ? '&' : '?';
+      iframe.src = agent.url + separator + 'embedded=true';
+      
+      iframe.onload = () => {
+        loading.classList.add('hidden');
+      };
+
+      // Close dropdown
+      closeDropdown();
+      renderAgentMenu();
+    }
+
+    function toggleDropdown() {
+      dropdownOpen = !dropdownOpen;
+      document.getElementById('agent-menu').classList.toggle('open', dropdownOpen);
+      document.getElementById('agent-btn').classList.toggle('open', dropdownOpen);
+    }
+
+    function closeDropdown() {
+      dropdownOpen = false;
+      document.getElementById('agent-menu').classList.remove('open');
+      document.getElementById('agent-btn').classList.remove('open');
+    }
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('agent-dropdown').contains(e.target)) {
+        closeDropdown();
+      }
+    });
+
+    // ═══ SHAKE ANIMATION ═══
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20% { transform: translateX(-8px); }
+        40% { transform: translateX(8px); }
+        60% { transform: translateX(-5px); }
+        80% { transform: translateX(5px); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // ═══ INIT ═══
+    checkAuth();
+  </script>
+</body>
+</html>
