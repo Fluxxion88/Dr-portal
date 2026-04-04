@@ -425,6 +425,7 @@
   <script>
     // ═══ CONFIG ═══
     const PASSCODE = 'Sdekteam202';
+    const ACCESS_KEY = 'dr-access-2026';
     const SESSION_KEY = 'dr-portal-auth';
     const AGENT_KEY = 'dr-portal-agent';
 
@@ -530,7 +531,7 @@
       // Load agent in iframe with embedded flag
       const iframe = document.getElementById('agent-iframe');
       const separator = agent.url.includes('?') ? '&' : '?';
-      iframe.src = agent.url + separator + 'embedded=true';
+      iframe.src = agent.url + separator + 'embedded=true&key=' + ACCESS_KEY;
       
       iframe.onload = () => {
         loading.classList.add('hidden');
