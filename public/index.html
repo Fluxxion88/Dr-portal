@@ -354,6 +354,35 @@
       color: var(--accent-red);
     }
 
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .lang-btn {
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .lang-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .lang-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+
     /* ── Content (iframe) ── */
     .portal-content {
       flex: 1;
@@ -450,6 +479,10 @@
 
       <!-- Right side -->
       <div class="portal-status">
+        <div class="lang-switch">
+          <button class="lang-btn active" id="lang-en" onclick="setPortalLang('en')">EN</button>
+          <button class="lang-btn" id="lang-ru" onclick="setPortalLang('ru')">RU</button>
+        </div>
         <span class="status-dot">Online</span>
         <span class="portal-version">v1.0</span>
         <button class="logout-btn" onclick="logout()">Logout</button>
@@ -578,6 +611,36 @@
     // ═══ STATE ═══
     let currentAgent = null;
     let dropdownOpen = false;
+    let currentLang = localStorage.getItem('dr-lang') || 'en';
+
+    function setPortalLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('dr-lang', lang);
+
+      // Update buttons
+      document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
+      document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+
+      // Send lang to iframe agent
+      const iframe = document.getElementById('agent-iframe');
+      if (iframe && iframe.contentWindow) {
+        try {
+          // Try to set lang in agent's localStorage (same-origin only)
+          iframe.contentWindow.localStorage.setItem('dr-lang', lang);
+          // Reload iframe to apply
+          iframe.contentWindow.location.reload();
+        } catch(e) {
+          // Cross-origin — append lang param and reload iframe
+          if (currentAgent) {
+            const agent = AGENTS.find(a => a.id === currentAgent);
+            if (agent && agent.url) {
+              const separator = agent.url.includes('?') ? '&' : '?';
+              iframe.src = agent.url + separator + 'embedded=true&key=' + ACCESS_KEY + '&lang=' + lang;
+            }
+          }
+        }
+      }
+    }
 
     // ═══ AUTH ═══
     function checkAuth() {
@@ -621,7 +684,11 @@
       document.getElementById('portal').classList.add('active');
       
       renderAgentMenu();
-      
+
+      // Restore language switch state
+      document.getElementById('lang-ru').classList.toggle('active', currentLang === 'ru');
+      document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
+
       // Restore last agent or default to first
       const savedAgent = localStorage.getItem(AGENT_KEY) || AGENTS[0].id;
       selectAgent(savedAgent);
@@ -686,7 +753,7 @@
       // Load agent in iframe with embedded flag
       const iframe = document.getElementById('agent-iframe');
       const separator = agent.url.includes('?') ? '&' : '?';
-      iframe.src = agent.url + separator + 'embedded=true&key=' + ACCESS_KEY;
+      iframe.src = agent.url + separator + 'embedded=true&key=' + ACCESS_KEY + '&lang=' + currentLang;
       
       iframe.onload = () => {
         loading.classList.add('hidden');
