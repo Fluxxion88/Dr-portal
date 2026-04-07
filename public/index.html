@@ -617,28 +617,12 @@
       currentLang = lang;
       localStorage.setItem('dr-lang', lang);
 
-      // Update buttons
       document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
       document.getElementById('lang-en').classList.toggle('active', lang === 'en');
 
-      // Send lang to iframe agent
       const iframe = document.getElementById('agent-iframe');
       if (iframe && iframe.contentWindow) {
-        try {
-          // Try to set lang in agent's localStorage (same-origin only)
-          iframe.contentWindow.localStorage.setItem('dr-lang', lang);
-          // Reload iframe to apply
-          iframe.contentWindow.location.reload();
-        } catch(e) {
-          // Cross-origin — append lang param and reload iframe
-          if (currentAgent) {
-            const agent = AGENTS.find(a => a.id === currentAgent);
-            if (agent && agent.url) {
-              const separator = agent.url.includes('?') ? '&' : '?';
-              iframe.src = agent.url + separator + 'embedded=true&key=' + ACCESS_KEY + '&lang=' + lang;
-            }
-          }
-        }
+        iframe.contentWindow.postMessage({ type: 'dr-set-lang', lang: lang }, '*');
       }
     }
 
