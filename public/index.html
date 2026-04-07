@@ -148,6 +148,8 @@
       padding: 0 20px;
       flex-shrink: 0;
       gap: 16px;
+      justify-content: center;
+      position: relative;
     }
 
     .portal-logo {
@@ -155,12 +157,12 @@
       font-weight: 700;
       color: #fff;
       white-space: nowrap;
+      position: absolute;
+      left: 20px;
     }
 
     .portal-sep {
-      width: 1px;
-      height: 24px;
-      background: var(--border-light);
+      display: none;
     }
 
     /* Agent dropdown */
@@ -210,6 +212,45 @@
     .agent-dot.green { background: var(--accent-green); }
     .agent-dot.blue { background: var(--accent-blue); }
     .agent-dot.cyan { background: var(--accent-cyan); }
+    .agent-dot.muted { background: var(--text-muted); }
+
+    .agent-option.planned {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .agent-option.planned:hover {
+      background: transparent;
+    }
+
+    .planned-badge {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .agent-section-label {
+      padding: 8px 12px 4px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+    }
+
+    .agent-section-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 8px;
+    }
 
     .agent-menu {
       position: absolute;
@@ -225,6 +266,8 @@
       visibility: hidden;
       transform: translateY(-4px);
       transition: all 0.15s ease;
+      max-height: 70vh;
+      overflow-y: auto;
     }
 
     .agent-menu.open {
@@ -266,7 +309,9 @@
 
     /* Status indicator */
     .portal-status {
-      margin-left: auto;
+      position: absolute;
+      right: 20px;
+      margin-left: 0;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -430,12 +475,14 @@
     const AGENT_KEY = 'dr-portal-agent';
 
     const AGENTS = [
+      // ── Active ──
       {
         id: 'classifier',
         name: 'HS Classifier',
         desc: 'TNVED code classification for customs',
         url: 'https://rezonyr-hs-classifier.up.railway.app',
         dot: 'green',
+        planned: false,
       },
       {
         id: 'letter-gen',
@@ -443,6 +490,88 @@
         desc: 'Information letter generation from DTT + registry',
         url: 'https://sdek-mail.up.railway.app',
         dot: 'blue',
+        planned: false,
+      },
+      // ── Planned ──
+      {
+        id: 'doc-intake',
+        name: 'Document Intake & Extraction',
+        desc: 'Extract data from invoices, packing lists, AWB, certificates',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'data-norm',
+        name: 'Shipment Data Normalization',
+        desc: 'Cross-check & discrepancy detection across trade docs',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'sanctions',
+        name: 'Denied Party Screening',
+        desc: 'Sanctions & export control compliance checks',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'duty-calc',
+        name: 'Duty & Landed Cost Calculator',
+        desc: 'Import duties, VAT & excise auto-calculation',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'pga-flags',
+        name: 'PGA / OGA Compliance',
+        desc: 'License requirements & agency-specific checks',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'entry-filing',
+        name: 'Automated Entry Filing',
+        desc: 'Declaration generation & submission to customs systems',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'fta-engine',
+        name: 'FTA Qualification Engine',
+        desc: 'Free trade agreement eligibility & rules of origin',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'audit-trail',
+        name: 'Post-Clearance Audit Trail',
+        desc: 'Digital audit log & due diligence documentation',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'permit-mgr',
+        name: 'Permit & Certificate Manager',
+        desc: 'Track permits, certificates & expiration dates',
+        url: '',
+        dot: 'muted',
+        planned: true,
+      },
+      {
+        id: 'tariff-advisory',
+        name: 'Tariff Advisory Agent',
+        desc: 'HS code change alerts & tariff optimization',
+        url: '',
+        dot: 'muted',
+        planned: true,
       },
     ];
 
@@ -501,8 +630,16 @@
     // ═══ AGENT SWITCHING ═══
     function renderAgentMenu() {
       const menu = document.getElementById('agent-menu');
-      menu.innerHTML = AGENTS.map(agent => `
-        <div class="agent-option ${currentAgent === agent.id ? 'active' : ''}" 
+
+      const active = AGENTS.filter(a => !a.planned);
+      const planned = AGENTS.filter(a => a.planned);
+
+      let html = '';
+
+      // Active section
+      html += '<div class="agent-section-label">Active</div>';
+      html += active.map(agent => `
+        <div class="agent-option ${currentAgent === agent.id ? 'active' : ''}"
              onclick="selectAgent('${agent.id}')">
           <span class="agent-dot ${agent.dot}"></span>
           <div>
@@ -511,11 +648,29 @@
           </div>
         </div>
       `).join('');
+
+      // Divider
+      html += '<div class="agent-section-divider"></div>';
+
+      // Planned section
+      html += '<div class="agent-section-label">Planned</div>';
+      html += planned.map(agent => `
+        <div class="agent-option planned">
+          <span class="agent-dot ${agent.dot}"></span>
+          <div>
+            <div class="agent-option-name">${agent.name}</div>
+            <div class="agent-option-desc">${agent.desc}</div>
+          </div>
+          <span class="planned-badge">planned</span>
+        </div>
+      `).join('');
+
+      menu.innerHTML = html;
     }
 
     function selectAgent(agentId) {
       const agent = AGENTS.find(a => a.id === agentId);
-      if (!agent) return;
+      if (!agent || agent.planned) return;
 
       currentAgent = agent.id;
       localStorage.setItem(AGENT_KEY, agent.id);
